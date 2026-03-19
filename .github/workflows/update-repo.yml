@@ -1,0 +1,52 @@
+name: Generate F-Droid Index
+on:
+  push:
+    branches:
+      - apk-uploads
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-fdroid:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Checkout APKs from apk-uploads branch
+        uses: actions/checkout@v4
+        with:
+          ref: apk-uploads
+          path: incoming-apks
+
+      - name: Install fdroidserver
+        run: |
+          pip install git+https://gitlab.com/fdroid/fdroidserver.git
+
+      - name: Process APKs and Update Index
+        run: |
+          echo "${{ secrets.FDROIDS_KEYSTORE_BASE64 }}" | base64 --decode > keystore.p12
+          echo "${{ secrets.FDROIDS_CONFIG_YML }}" | base64 --decode > config.yml
+
+          chmod 600 keystore.p12
+          chmod 600 config.yml
+
+          mkdir -p repo archive
+          cp incoming-apks/repo/*.apk repo/
+          rm -rf incoming-apks
+          rm repo/.gitkeep || true
+
+          fdroid update -c --rename-apks -v
+          rm keystore.p12 config.yml
+
+      - name: Commit and Push to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add repo/ archive/
+          git commit -m "Auto-update F-Droid repository index" || echo "No changes to commit"
+          git push origin main
