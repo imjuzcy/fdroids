@@ -25,7 +25,8 @@ jobs:
 
       - name: Install fdroidserver
         run: |
-          pip install git+https://gitlab.com/fdroid/fdroidserver.git
+          pip install fdroidserver
+          # pip install git+https://gitlab.com/fdroid/fdroidserver.git
 
       - name: Process APKs and Update Index
         run: |
